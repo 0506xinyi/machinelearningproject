@@ -1,3 +1,5 @@
 .venv/
 __pycache__/
 *.pyc
+final_model_ready_train.csv
+final_model_ready_test.csv
