@@ -1,4 +1,4 @@
-# RomanceScam - Dating App Top-Tier User Prediction
+#Dating App Top-Tier User Prediction
 
 ## Problem Statement
 
