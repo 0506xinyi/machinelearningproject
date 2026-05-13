@@ -23,3 +23,7 @@ pandas
 numpy
 plotly
 scikit-learn
+xgboost
+
+
+
