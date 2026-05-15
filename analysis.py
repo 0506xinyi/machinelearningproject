@@ -7,9 +7,6 @@ from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier 
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 
-# ==========================================================
-# THRESHOLD SETTING
-# ==========================================================
 THRESHOLD = 0.50
 
 def run_shootout_and_diagnose(input_filename):
@@ -36,7 +33,7 @@ def run_shootout_and_diagnose(input_filename):
     results = []
     
     print("\n==========================================================")
-    print("🩺 PHASE 1: OVERFITTING DIAGNOSIS (Train vs. Test)")
+    print("🩺 PHASE 1: OVERFITTING & UNDERFITTING DIAGNOSIS (Train vs. Test)")
     print("==========================================================")
 
     for name, model in models.items():
@@ -67,7 +64,6 @@ def run_shootout_and_diagnose(input_filename):
         train_auc = roc_auc_score(y_train, train_probs)
         test_auc = roc_auc_score(y_test, test_probs)
 
-        # Print simplified diagnosis to save space
         f1_gap = train_f1 - test_f1
         if train_f1 >= 0.85 and f1_gap >= 0.10:
             print(f"⚠️ OVERFITTING: Train F1 {train_f1*100:.1f}%, Test F1 {test_f1*100:.1f}% (Gap: {f1_gap*100:.1f}%)")
@@ -88,7 +84,6 @@ def run_shootout_and_diagnose(input_filename):
     print(f"🏆 PHASE 2: FINAL LEADERBOARD (Threshold = {THRESHOLD})")
     print("==========================================================")
 
-    # 修复排版：强制对齐
     print(f"{'Model Name':<22} | {'Precision':>9} | {'Recall':>9} | {'F1 Score':>9} | {'ROC-AUC':>9}")
     print("-" * 70)
     
@@ -97,30 +92,24 @@ def run_shootout_and_diagnose(input_filename):
     for r in results:
         print(f"{r['Model']:<22} | {r['Precision']:>8.2f}% | {r['Recall']:>8.2f}% | {r['F1 Score']:>8.2f}% | {r['ROC-AUC']:>8.2f}%")
 
-    # 核心新增：自动提取第一名
+
     best_model_name = results[0]['Model']
     print(f"\n🥇 The Winner is: {best_model_name}! Proceeding to Auto-Tuning...")
     return best_model_name
 
-# ==========================================================
-# MAIN
-# ==========================================================
 if __name__ == "__main__":
 
-    # 1. 跑前两个阶段，并获取冠军名字
     champion_model = run_shootout_and_diagnose('processed_desirability_data.csv')
 
     print("\n==========================================================")
     print(f"🔍 PHASE 3: HYPERPARAMETER TUNING FOR [{champion_model.upper()}]")
     print("==========================================================")
 
-    # 2. 重新准备数据
     df = pd.read_csv('processed_desirability_data.csv')
     X = df.drop('Is_Top_Tier', axis=1)
     y = df['Is_Top_Tier']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
 
-    # 3. 自动化选择模型和参数网格
     if champion_model == "Random Forest":
         base_model = RandomForestClassifier(class_weight='balanced', random_state=42)
         param_grid = {
@@ -162,12 +151,11 @@ if __name__ == "__main__":
         param_grid = {
             'C': [0.01, 0.1, 1.0, 10.0]
         }
-        # 逻辑回归必须用 Scaled Data
+
         scaler = StandardScaler()
         train_data_p3 = scaler.fit_transform(X_train)
         test_data_p3 = scaler.transform(X_test)
 
-    # 4. 执行自动网格搜索
     grid_search = GridSearchCV(
         base_model,
         param_grid,
@@ -182,7 +170,6 @@ if __name__ == "__main__":
     print(f"\n✅ Best Parameters: {grid_search.best_params_}")
     print(f"✅ Best Cross-Validated F1 Score: {grid_search.best_score_ * 100:.2f}%")
 
-    # 5. 最终测试评估
     best_model = grid_search.best_estimator_
     test_probs = best_model.predict_proba(test_data_p3)[:, 1]
     test_preds = (test_probs >= THRESHOLD).astype(int)
