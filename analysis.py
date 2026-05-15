@@ -222,3 +222,21 @@ if __name__ == "__main__":
     print(f"Recall    : {recall_score(y_test, test_preds, zero_division=0) * 100:.2f}%")
     print(f"F1 Score  : {f1_score(y_test, test_preds, zero_division=0) * 100:.2f}%")
     print(f"ROC-AUC   : {roc_auc_score(y_test, test_probs) * 100:.2f}%")
+
+    summary_data = [
+        ["Manual Tuned", final_precision*100, final_recall*100, final_f1*100, final_auc*100],
+        [f"AutoML", precision_score(y_test, test_preds, zero_division=0)*100, 
+         recall_score(y_test, test_preds, zero_division=0)*100, 
+         f1_score(y_test, test_preds, zero_division=0)*100, 
+         roc_auc_score(y_test, test_probs)*100]
+    ]
+
+    print(f"\n{'Method':<20} | {'Prec':>7} | {'Rec':>7} | {'F1':>7} | {'AUC':>7}")
+    print("-" * 60)
+    for row in summary_data:
+        print(f"{row[0]:<20} | {row[1]:>6.2f}% | {row[2]:>6.2f}% | {row[3]:>6.2f}% | {row[4]:>6.2f}%")
+    print("\n💡 CONCLUSION")
+    if final_f1 > f1_score(y_test, test_preds, zero_division=0):
+        print("Our manually tuned model outperformed the AutoML benchmark in F1-score.")
+    else:
+        print("The AutoML benchmark found a slightly more optimized configuration.")
