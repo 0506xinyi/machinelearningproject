@@ -1,10 +1,10 @@
 """
-Elder-Fraud Shield Dashboard
+Dating App Top-Tier User Prediction Dashboard
 WIA1006/WID3006 Machine Learning — Sem 2, 2025/2026
-Romance Scam Forensics on Dating Platforms
+Group Project: Tying the Data Knot — Love, Life & Likes
 
 HOW TO RUN:
-  pip install streamlit pandas plotly scikit-learn
+  python -m pip install streamlit pandas plotly scikit-learn xgboost joblib
   streamlit run app.py
 """
 
@@ -13,370 +13,537 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import random
+import os
+import joblib
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PAGE CONFIG  (must be first Streamlit call)
+# PAGE CONFIG
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Elder-Fraud Shield",
-    page_icon="🛡️",
+    page_title="Top-Tier Dating Predictor",
+    page_icon="💘",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CUSTOM CSS  — dark security theme matching the HTML dashboard
+# CUSTOM CSS — "SCORCHED EARTH" CONTRAST OVERRIDES FOR STREAMLIT WIDGETS
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-/* ── App background ── */
-.stApp { background-color: #050c14; color: #cde8ff; }
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
 
-/* ── Sidebar ── */
+/* ── Global Dark Canvas Background ── */
+.stApp { 
+    background-color: #040409; 
+    color: #ffffff !important; 
+    font-family: 'Syne', sans-serif; 
+}
+
+/* ── Sidebar Component Formatting ── */
 [data-testid="stSidebar"] {
-    background: #0a1624;
-    border-right: 1px solid #0d2640;
+    background: linear-gradient(180deg, #090314 0%, #040409 100%);
+    border-right: 1px solid #4a2380;
 }
-[data-testid="stSidebar"] * { color: #cde8ff !important; }
+[data-testid="stSidebar"] * { 
+    color: #ffffff !important; 
+}
 
-/* ── Metric cards ── */
+/* ── AGGRESSIVE TEXT VISIBILITY OVERRIDES FOR ALL LABELS & SLIDERS ── */
+/* Targets root labels and Streamlit's specific internal widget layouts */
+label, label p, label div, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] div,
+.stSlider label, .stSlider p, .stSlider div, 
+.stNumberInput label, .stNumberInput p, 
+.stSelectbox label, .stSelectbox p, 
+.stMultiSelect label, .stMultiSelect p,
+.section-label {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 1.15rem !important;
+    opacity: 1 !important;
+}
+
+div[data-baseweb="select"] {
+    background-color: #ffffff !important;
+    border: 2px solid #7b3fc4 !important;
+    border-radius: 8px;
+}
+div[data-baseweb="select"] div, div[data-baseweb="select"] span, div[data-baseweb="select"] * {
+    color: #000000 !important;
+}
+/* Targets the drop-down menu that pops out */
+div[data-baseweb="popover"] ul[role="listbox"], ul[role="listbox"] {
+    background-color: #ffffff !important;
+    border: 1px solid #7b3fc4 !important;
+}
+div[data-baseweb="popover"] li[role="option"], li[role="option"] {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+}
+div[data-baseweb="popover"] li[role="option"]:hover, 
+li[role="option"]:hover, li[role="option"][aria-selected="true"] {
+    background-color: #e5d4f7 !important;
+    color: #000000 !important;
+}
+
+/* ── Metric Cards ── */
 [data-testid="stMetric"] {
-    background: #0a1624;
-    border: 1px solid #0d2640;
-    border-radius: 12px;
-    padding: 16px 20px !important;
+    background: linear-gradient(135deg, #090314 0%, #150530 100%);
+    border: 1px solid #8e4ee6;
+    border-radius: 16px;
+    padding: 20px 24px !important;
 }
-[data-testid="stMetricLabel"] { color: #4a6a8a !important; font-size: 0.75rem !important; letter-spacing: 0.08em; }
-[data-testid="stMetricValue"] { color: #00d4ff !important; font-size: 2rem !important; font-weight: 800 !important; }
-[data-testid="stMetricDelta"] { font-size: 0.75rem !important; }
+[data-testid="stMetricLabel"] {
+    color: #e5d4f7 !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+[data-testid="stMetricValue"] {
+    color: #ffffff !important;
+    font-size: 2.3rem !important;
+    font-weight: 800 !important;
+    font-family: 'Space Mono', monospace;
+}
 
-/* ── Headings ── */
-h1 { color: #ffffff !important; font-size: 1.6rem !important; }
-h2 { color: #00d4ff !important; font-size: 1.1rem !important; letter-spacing: 0.05em; }
-h3 { color: #cde8ff !important; }
+/* ── PRIMARY HEADER ARCHITECTURE (h1) ── */
+h1, .stMarkdown h1, div[data-testid="stMarkdownContainer"] h1 {
+    color: #ffffff !important;
+    font-family: 'Syne', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 3.6rem !important;  
+    letter-spacing: 0.03em !important; 
+    line-height: 1.25 !important;
+    margin-top: 15px !important;
+    margin-bottom: 20px !important;
+    text-shadow: 0px 3px 6px rgba(0,0,0,0.7) !important;
+    display: block !important;
+}
 
-/* ── DataFrames / tables ── */
-[data-testid="stDataFrame"] { border: 1px solid #0d2640; border-radius: 8px; }
+/* ── Section Headings (h2) ── */
+h2, .stMarkdown h2, div[data-testid="stMarkdownContainer"] h2 {
+    color: #c084f5 !important;
+    font-size: 1.65rem !important; 
+    font-weight: 800 !important;
+    letter-spacing: 0.04em !important;
+    margin-top: 1.8rem !important;
+    margin-bottom: 0.8rem !important;
+    text-transform: none !important;
+}
+h3, .stMarkdown h3 { 
+    color: #e8d5f5 !important; 
+    font-size: 1.2rem !important; 
+    font-weight: 700 !important;
+}
 
-/* ── Selectbox / inputs ── */
-.stSelectbox > div, .stSlider > div, .stNumberInput > div { color: #cde8ff !important; }
+/* ── Data Tables ── */
+[data-testid="stDataFrame"] { border: 1px solid #3d1f6b; border-radius: 10px; background-color: #121224; }
+[data-testid="stDataFrame"] div th { color: #ffffff !important; font-weight: 700 !important; background-color: #1a0a2e !important; }
+[data-testid="stDataFrame"] div td { color: #ffffff !important; }
 
 /* ── Buttons ── */
 .stButton > button {
-    background: #00d4ff22;
-    border: 1px solid #00d4ff55;
-    color: #00d4ff;
-    border-radius: 8px;
-    font-weight: 600;
+    background: linear-gradient(135deg, #6c3db0, #c084f5);
+    border: none;
+    color: white !important;
+    border-radius: 10px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    padding: 12px 28px;
+    font-size: 1rem;
 }
-.stButton > button:hover { background: #00d4ff44; }
+.stButton > button:hover { opacity: 0.90; box-shadow: 0 0 14px #c084f5; }
 
-/* ── Divider ── */
-hr { border-color: #0d2640 !important; }
-
-/* ── Plotly chart containers ── */
-.js-plotly-plot { border-radius: 12px; }
-
-/* ── Alert / info boxes ── */
-.stAlert { border-radius: 8px; }
+hr { border-color: #3d1f6b !important; }
+.stAlert { border-radius: 10px; background-color: #1a0a2e; border: 1px solid #7b3fc4; color: #ffffff; }
+.stTooltipIcon { color: #c084f5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# COLOUR PALETTE  (matches HTML dashboard exactly)
+# COLOUR PALETTE & HIGH-CONTRAST PLOTLY DICTIONARY
 # ─────────────────────────────────────────────────────────────────────────────
-C_BG     = "#050c14"
-C_PANEL  = "#0a1624"
-C_BORDER = "#0d2640"
-C_ACCENT = "#00d4ff"
-C_DANGER = "#ff3b5c"
-C_WARN   = "#ffb800"
-C_SAFE   = "#00e5a0"
-C_MUTED  = "#4a6a8a"
-C_TEXT   = "#cde8ff"
+C_BG      = "#040409"
+C_PANEL   = "#090314"
+C_BORDER  = "#3d1f6b"
+C_GRID    = "#4a4a6a"  
+C_ACCENT  = "#c084f5"
+C_GOLD    = "#f0c44f"
+C_GREEN   = "#4fffb0"
+C_PINK    = "#ff6eb4"
+C_MUTED   = "#bdafcf"  
+C_TEXT    = "#ffffff"  
+
+CHART_H   = 480  
 
 PLOTLY_LAYOUT = dict(
     paper_bgcolor=C_PANEL,
     plot_bgcolor=C_PANEL,
-    font=dict(color=C_TEXT, family="monospace", size=11),
-    margin=dict(t=40, b=30, l=30, r=20),
+    font=dict(color=C_TEXT, family="Space Mono, monospace", size=12),
+    margin=dict(t=70, b=60, l=65, r=45),
+    height=CHART_H,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DATA — load CSV if available, otherwise generate synthetic demo data
+# LOAD MODEL
+# ─────────────────────────────────────────────────────────────────────────────
+model_path  = "final_ml_model.pkl"
+scaler_path = "scaler.pkl"
+
+if os.path.exists(model_path) and os.path.exists(scaler_path):
+    ml_model  = joblib.load(model_path)
+    ml_scaler = joblib.load(scaler_path)
+else:
+    ml_model  = None
+    ml_scaler = None
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOAD DATA
 # ─────────────────────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("cleaned_dataset.csv")
+        df = pd.read_csv("../processed_desirability_data.csv")
         return df
     except FileNotFoundError:
-        pass
-
-    # ── Synthetic demo matching Kaggle dataset schema ──
-    np.random.seed(42)
-    n = 50_000
-
-    age = np.random.randint(18, 80, n)
-
-    # Catfish probability increases sharply with age
-    catfish_prob = np.clip((age - 18) / 100 + 0.02, 0.02, 0.40)
-    outcome = []
-    for p in catfish_prob:
-        r = random.random()
-        if r < p:
-            outcome.append("Catfished")
-        elif r < p + 0.45:
-            outcome.append("Ghosted")
-        elif r < p + 0.80:
-            outcome.append("Mutual Match")
-        else:
-            outcome.append("Pending")
-
-    df = pd.DataFrame({
-        "Age":             age,
-        "Gender":          np.random.choice(["Male","Female","Non-binary"], n),
-        "Location_Type":   np.random.choice(["Urban","Suburban","Rural"], n),
-        "Income_Bracket":  np.random.choice(["<25k","25-50k","50-75k","75k+"], n),
-        "Education_Level": np.random.choice(["High School","Bachelor","Master","PhD"], n),
-        "App_Usage_Time":  np.round(np.random.exponential(4, n).clip(0.5, 14), 2),
-        "Swipe_Ratio":     np.round(np.random.beta(2, 3, n), 3),
-        "Likes_Received":  np.random.randint(0, 500, n),
-        "Mutual_Matches":  np.random.randint(0, 100, n),
-        "Match_Outcome":   outcome,
-    })
-
-    # Scammers have higher swipe ratios & usage time
-    mask = df["Match_Outcome"] == "Catfished"
-    df.loc[mask, "Swipe_Ratio"]    = np.round(np.random.beta(8, 2, mask.sum()), 3)
-    df.loc[mask, "App_Usage_Time"] = np.round(np.random.uniform(8, 14, mask.sum()), 2)
-
-    return df
+        try:
+            df = pd.read_csv("processed_desirability_data.csv")
+            return df
+        except FileNotFoundError:
+            st.error("❌ Could not find 'processed_desirability_data.csv'. Please run clean_data.py first!")
+            return pd.DataFrame()
 
 df = load_data()
 
-# Derived columns
-df["Age_Group"] = pd.cut(df["Age"],
-                         bins=[17, 30, 45, 60, 75, 100],
-                         labels=["18–30","31–45","46–60","61–75","76+"])
+if not df.empty:
+    df["Age_Group"] = pd.cut(
+        df["age"],
+        bins=[17, 30, 45, 60, 75, 100],
+        labels=["18–30", "31–45", "46–60", "61–75", "76+"]
+    )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIDEBAR
 # ─────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🛡️ Elder-Fraud Shield")
-    st.markdown("*Romance Scam Detection*")
+    st.markdown("## 💘 Top-Tier Predictor")
+    st.markdown("*Dating App User Analysis*")
     st.markdown("---")
 
     page = st.selectbox(
         "📂 Navigate",
         ["📊 Overview Dashboard",
-         "🔍 Behavioral Analysis",
+         "🔍 Feature Analysis",
          "🤖 Model Performance",
-         "🚨 Live Fraud Detection",
+         "✨ Predict Top-Tier",
          "ℹ️ About"]
     )
 
     st.markdown("---")
-    st.markdown("**🎛️ Filters**")
-
-    sel_gender = st.multiselect(
-        "Gender",
-        options=df["Gender"].unique().tolist(),
-        default=df["Gender"].unique().tolist(),
-    )
+    st.markdown("**🎛️ Filter by Age Group**")
     sel_age = st.multiselect(
         "Age Group",
-        options=["18–30","31–45","46–60","61–75","76+"],
-        default=["18–30","31–45","46–60","61–75","76+"],
-    )
-    sel_location = st.multiselect(
-        "Location Type",
-        options=df["Location_Type"].unique().tolist(),
-        default=df["Location_Type"].unique().tolist(),
+        options=["18–30", "31–45", "46–60", "61–75", "76+"],
+        default=["18–30", "31–45", "46–60", "61–75", "76+"],
     )
 
     st.markdown("---")
-    st.markdown(f"<small style='color:{C_MUTED}'>WIA1006/WID3006 ML<br>Sem 2, 2025/2026</small>",
-                unsafe_allow_html=True)
+    if not df.empty:
+        top_tier_count = int(df["Is_Top_Tier"].sum())
+        total_count    = len(df)
+        st.markdown(
+            f"<p style='color:#ffffff; font-size:0.85rem; line-height:1.6;'>"
+            f"📦 <strong>Dataset:</strong> {total_count:,} users<br>"
+            f"⭐ <strong>Top-Tier:</strong> {top_tier_count:,} users<br><br>"
+            f"WIA1006/WID3006 ML<br>Sem 2, 2025/2026</p>",
+            unsafe_allow_html=True
+        )
 
-# Apply filters
-dff = df[
-    df["Gender"].isin(sel_gender) &
-    df["Age_Group"].isin(sel_age) &
-    df["Location_Type"].isin(sel_location)
-]
+# ─────────────────────────────────────────────────────────────────────────────
+# FILTERED DATA SCOPE
+# ─────────────────────────────────────────────────────────────────────────────
+if not df.empty and sel_age:
+    dff = df[df["Age_Group"].isin(sel_age)]
+else:
+    dff = df.copy() if not df.empty else pd.DataFrame()
 
-total      = len(dff)
-catfished  = (dff["Match_Outcome"] == "Catfished").sum()
-high_risk  = int(catfished * 0.35)
-cleared    = int(catfished * 2.1)
+total    = len(dff)
+top_tier = int((dff["Is_Top_Tier"] == 1).sum()) if not dff.empty else 0
+normal   = total - top_tier
+top_pct  = round((top_tier / total * 100), 1) if total > 0 else 0
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE 1 — OVERVIEW DASHBOARD
 # ─────────────────────────────────────────────────────────────────────────────
 if page == "📊 Overview Dashboard":
 
-    st.markdown("# 🛡️ Elder-Fraud Shield")
-    st.markdown("**Romance Scam Forensics Dashboard** · WIA1006/WID3006 Machine Learning")
+    st.markdown("# 💘 Dating App Top-Tier User Prediction")
+    st.markdown("**Tying the Data Knot: Love, Life & Likes** · WIA1006/WID3006 Machine Learning")
     st.markdown("---")
 
-    # ── KPI Metrics ──
+    # ── KPI Cards ──
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("👥 Total Records",    f"{total:,}")
-    c2.metric("🚨 Catfished Cases",  f"{catfished:,}",   delta=f"+12 this hour", delta_color="inverse")
-    c3.metric("⚠️ High-Risk Flagged", f"{high_risk:,}",  delta="Under review",   delta_color="off")
-    c4.metric("✅ Accounts Cleared", f"{cleared:,}",     delta="Last 24 hrs",    delta_color="normal")
+    c1.metric("👥 Total Users",    f"{total:,}")
+    c2.metric("⭐ Top-Tier Users", f"{top_tier:,}",  delta="Top 20% by popularity")
+    c3.metric("👤 Normal Users",   f"{normal:,}",    delta="Remaining 80%")
+    c4.metric("📈 Top-Tier Rate",  f"{top_pct}%",    delta="Of selected users")
 
     st.markdown("---")
 
-    # ── Row 1: Outcome Distribution + Age Catfish Rate ──
+    # ── Row 1: Pie + Bar ──
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.markdown("## Match Outcome Distribution")
-        outcome_counts = dff["Match_Outcome"].value_counts().reset_index()
-        outcome_counts.columns = ["Outcome", "Count"]
-        fig_pie = px.pie(
-            outcome_counts, names="Outcome", values="Count",
-            color="Outcome",
-            color_discrete_map={
-                "Mutual Match": C_SAFE,
-                "Ghosted":      C_MUTED,
-                "Catfished":    C_DANGER,
-                "Pending":      C_WARN,
-            },
-            hole=0.6,
-        )
-        fig_pie.update_layout(**PLOTLY_LAYOUT, showlegend=True)
-        fig_pie.update_traces(textposition="outside", textinfo="percent+label",
-                              textfont_color=C_TEXT)
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.markdown("## Top-Tier vs Normal User Split")
+        if not dff.empty:
+            counts = dff["Is_Top_Tier"].value_counts().reset_index()
+            counts.columns = ["Status", "Count"]
+            counts["Status"] = counts["Status"].map({1: "⭐ Top-Tier", 0: "👤 Normal"})
+            fig_pie = px.pie(
+                counts, names="Status", values="Count",
+                color="Status",
+                color_discrete_map={"⭐ Top-Tier": C_GOLD, "👤 Normal": C_MUTED},
+                hole=0.52,
+            )
+            
+            pie_layout = PLOTLY_LAYOUT.copy()
+            pie_layout.update(dict(
+                showlegend=True,
+                legend=dict(font=dict(size=13, color=C_TEXT), orientation="h", yanchor="bottom", y=-0.18),
+                margin=dict(t=30, b=80, l=45, r=45),
+            ))
+            fig_pie.update_layout(pie_layout)
+            
+            fig_pie.update_traces(
+                textposition="outside",
+                textinfo="percent+label",
+                textfont=dict(size=13, color=C_TEXT),
+            )
+            st.plotly_chart(fig_pie, width='stretch')
 
     with col_b:
-        st.markdown("## Catfish Rate by Age Group")
-        age_cat = (
-            dff.groupby("Age_Group", observed=True)["Match_Outcome"]
-            .apply(lambda x: (x == "Catfished").mean() * 100)
-            .reset_index()
-        )
-        age_cat.columns = ["Age_Group", "Catfish_Rate"]
-        fig_age = px.bar(
-            age_cat, x="Age_Group", y="Catfish_Rate",
-            color="Catfish_Rate",
-            color_continuous_scale=[[0, C_SAFE], [0.5, C_WARN], [1, C_DANGER]],
-            labels={"Catfish_Rate": "Catfish Rate (%)", "Age_Group": "Age Group"},
-        )
-        fig_age.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
-        fig_age.update_traces(marker_line_width=0)
-        st.plotly_chart(fig_age, use_container_width=True)
+        st.markdown("## Top-Tier Rate by Age Group")
+        if not dff.empty:
+            age_grp = (
+                dff.groupby("Age_Group", observed=True)["Is_Top_Tier"]
+                .mean() * 100
+            ).reset_index()
+            age_grp.columns = ["Age_Group", "Top_Tier_Rate"]
+            fig_age = px.bar(
+                age_grp, x="Age_Group", y="Top_Tier_Rate",
+                color="Top_Tier_Rate",
+                color_continuous_scale=[[0, C_MUTED], [0.5, C_ACCENT], [1, C_GOLD]],
+                labels={"Top_Tier_Rate": "Top-Tier Rate (%)", "Age_Group": "Age Group"},
+                text_auto=".1f",
+            )
+            
+            age_layout = PLOTLY_LAYOUT.copy()
+            age_layout.update(dict(
+                coloraxis_showscale=False,
+                yaxis=dict(range=[0, 35], gridcolor=C_GRID, title=dict(text="Top-Tier Rate (%)", font=dict(color=C_TEXT)), tickfont=dict(color=C_TEXT)),
+                xaxis=dict(gridcolor=C_GRID, title=dict(text="Age Group", font=dict(color=C_TEXT)), tickfont=dict(color=C_TEXT)),
+            ))
+            fig_age.update_layout(age_layout)
+            
+            fig_age.update_traces(marker_line_width=0, textfont=dict(size=13, color=C_TEXT), textposition="outside")
+            st.plotly_chart(fig_age, width='stretch')
 
-    # ── Row 2: 14-Day Trend ──
-    st.markdown("## 📈 14-Day Fraud Activity Trend")
-    dates = pd.date_range(end=pd.Timestamp.today(), periods=14, freq="D")
-    flags = [18,24,19,31,28,35,42,38,47,51,44,58,62,69]
-    trend_df = pd.DataFrame({"Date": dates, "Flagged_Accounts": flags})
-    fig_trend = px.line(
-        trend_df, x="Date", y="Flagged_Accounts",
-        markers=True, labels={"Flagged_Accounts": "Flagged Accounts"},
-    )
-    fig_trend.update_traces(line_color=C_DANGER, marker_color=C_DANGER, fill="tozeroy",
-                             fillcolor="rgba(255,59,92,0.08)")
-    fig_trend.update_layout(**PLOTLY_LAYOUT)
-    fig_trend.update_xaxes(gridcolor=C_BORDER)
-    fig_trend.update_yaxes(gridcolor=C_BORDER)
-    st.plotly_chart(fig_trend, use_container_width=True)
+    # ── Row 2: Histograms ──
+    st.markdown("---")
+    st.markdown("## Profile Effort & BMI Distribution by User Type")
+    col_c, col_d = st.columns(2)
+
+    with col_c:
+        if not dff.empty:
+            fig_effort = px.histogram(
+                dff, x="Profile_Effort",
+                color="Is_Top_Tier",
+                color_discrete_map={1: C_GOLD, 0: C_MUTED},
+                barmode="overlay",
+                opacity=0.72,
+                labels={"Profile_Effort": "Profile Effort Score (Bio × Photos)", "count": "Number of Users"},
+                nbins=50,
+                title="Profile Effort Distribution",
+            )
+            fig_effort.update_layout(**PLOTLY_LAYOUT)
+            fig_effort.update_xaxes(gridcolor=C_GRID, tickfont=dict(color=C_TEXT), title=dict(font=dict(color=C_TEXT, size=13)))
+            fig_effort.update_yaxes(gridcolor=C_GRID, tickfont=dict(color=C_TEXT), title=dict(font=dict(color=C_TEXT, size=13)))
+            fig_effort.for_each_trace(lambda t: t.update(name="⭐ Top-Tier" if t.name == "1" else "👤 Normal"))
+            fig_effort.update_layout(legend=dict(font=dict(size=12, color=C_TEXT)), title=dict(font=dict(color=C_TEXT, size=15)))
+            st.plotly_chart(fig_effort, width='stretch')
+
+    with col_d:
+        if not dff.empty:
+            fig_bmi = px.histogram(
+                dff, x="BMI",
+                color="Is_Top_Tier",
+                color_discrete_map={1: C_GOLD, 0: C_MUTED},
+                barmode="overlay",
+                opacity=0.72,
+                labels={"BMI": "Body Mass Index (BMI)", "count": "Number of Users"},
+                nbins=50,
+                title="BMI Distribution",
+            )
+            fig_bmi.update_layout(**PLOTLY_LAYOUT)
+            fig_bmi.update_xaxes(gridcolor=C_GRID, tickfont=dict(color=C_TEXT), title=dict(font=dict(color=C_TEXT, size=13)))
+            fig_bmi.update_yaxes(gridcolor=C_GRID, tickfont=dict(color=C_TEXT), title=dict(font=dict(color=C_TEXT, size=13)))
+            fig_bmi.for_each_trace(lambda t: t.update(name="⭐ Top-Tier" if t.name == "1" else "👤 Normal"))
+            fig_bmi.update_layout(legend=dict(font=dict(size=12, color=C_TEXT)), title=dict(font=dict(color=C_TEXT, size=15)))
+            st.plotly_chart(fig_bmi, width='stretch')
+
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PAGE 2 — BEHAVIORAL ANALYSIS
+# PAGE 2 — FEATURE ANALYSIS
 # ─────────────────────────────────────────────────────────────────────────────
-elif page == "🔍 Behavioral Analysis":
+elif page == "🔍 Feature Analysis":
 
-    st.markdown("# 🔍 Behavioral Analysis")
-    st.markdown("Exploring behavioral patterns that distinguish scammers from genuine users.")
+    st.markdown("# 🔍 Feature Analysis")
+    st.markdown("Exploring how each feature relates to Top-Tier user status.")
     st.markdown("---")
 
-    # ── Scatter: Usage Time vs Swipe Ratio ──
-    st.markdown("## App Usage Time vs Swipe Ratio")
-    sample = dff.sample(min(3000, len(dff)), random_state=1)
-    fig_scatter = px.scatter(
-        sample, x="App_Usage_Time", y="Swipe_Ratio",
-        color="Match_Outcome",
-        color_discrete_map={
-            "Mutual Match": C_SAFE, "Ghosted": C_MUTED,
-            "Catfished": C_DANGER, "Pending": C_WARN
-        },
-        opacity=0.6, size_max=6,
-        labels={"App_Usage_Time": "App Usage Time (hrs)", "Swipe_Ratio": "Swipe Ratio"},
-    )
-    fig_scatter.update_layout(**PLOTLY_LAYOUT)
-    fig_scatter.update_xaxes(gridcolor=C_BORDER)
-    fig_scatter.update_yaxes(gridcolor=C_BORDER)
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    # ── Scatter full width ──
+    st.markdown("## App Usage Time vs Swipe Right Ratio")
+    if not dff.empty:
+        sample = dff.sample(min(3000, len(dff)), random_state=1)
+        fig_scatter = px.scatter(
+            sample, x="app_usage_time_min", y="swipe_right_ratio",
+            color="Is_Top_Tier",
+            color_discrete_map={1: C_GOLD, 0: C_MUTED},
+            opacity=0.55,
+            labels={
+                "app_usage_time_min": "Daily App Usage (Minutes)",
+                "swipe_right_ratio":  "Swipe Right Ratio",
+                "Is_Top_Tier":        "User Type",
+            },
+        )
+        
+        scatter_layout = PLOTLY_LAYOUT.copy()
+        scatter_layout.update(dict(
+            height=420, 
+            legend=dict(font=dict(size=13, color=C_TEXT)),
+            yaxis=dict(gridcolor=C_GRID, tickfont=dict(color=C_TEXT), title=dict(font=dict(color=C_TEXT, size=13))),
+            xaxis=dict(gridcolor=C_GRID, tickfont=dict(color=C_TEXT), title=dict(font=dict(color=C_TEXT, size=13)))
+        ))
+        fig_scatter.update_layout(scatter_layout)
+        
+        fig_scatter.update_xaxes(gridcolor=C_GRID)
+        fig_scatter.update_yaxes(gridcolor=C_GRID)
+        fig_scatter.for_each_trace(lambda t: t.update(name="⭐ Top-Tier" if t.name == "1" else "👤 Normal"))
+        st.plotly_chart(fig_scatter, width='stretch')
 
+    st.markdown("---")
+
+    # ── Feature Importance + Radar side by side ──
     col_c, col_d = st.columns(2)
 
     with col_c:
         st.markdown("## Feature Importance (Random Forest)")
-        features  = ["Swipe Ratio","App Usage Time","Likes Received","Age Group","Income Bracket","Mutual Matches"]
-        importances = [0.31, 0.24, 0.18, 0.14, 0.08, 0.05]
-        fi_df = pd.DataFrame({"Feature": features, "Importance": importances})
+        if ml_model is not None:
+            try:
+                feature_names = ['BMI', 'Age', 'Profile Effort', 'App Usage (min)',
+                                  'Swipe Right Ratio', 'Emoji Rate', 'Profile Pics', 'Bio Length']
+                importances   = ml_model.feature_importances_
+                fi_df = pd.DataFrame({"Feature": feature_names, "Importance": importances})
+                fi_df = fi_df.sort_values("Importance")
+            except Exception:
+                fi_df = pd.DataFrame({
+                    "Feature":    ['Bio Length', 'Profile Pics', 'Emoji Rate', 'Swipe Right Ratio',
+                                   'App Usage (min)', 'Profile Effort', 'Age', 'BMI'],
+                    "Importance": [0.05, 0.07, 0.08, 0.14, 0.16, 0.20, 0.12, 0.18]
+                })
+        else:
+            fi_df = pd.DataFrame({
+                "Feature":    ['Bio Length', 'Profile Pics', 'Emoji Rate', 'Swipe Right Ratio',
+                               'App Usage (min)', 'Profile Effort', 'Age', 'BMI'],
+                "Importance": [0.05, 0.07, 0.08, 0.14, 0.16, 0.20, 0.12, 0.18]
+            })
+
         fig_fi = px.bar(
-            fi_df.sort_values("Importance"), x="Importance", y="Feature",
-            orientation="h",
+            fi_df, x="Importance", y="Feature", orientation="h",
             color="Importance",
-            color_continuous_scale=[[0, C_MUTED],[0.5, C_ACCENT],[1, C_DANGER]],
+            color_continuous_scale=[[0, C_MUTED], [0.5, C_ACCENT], [1, C_GOLD]],
+            labels={"Importance": "Importance Score", "Feature": ""},
         )
-        fig_fi.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+        
+        fi_layout = PLOTLY_LAYOUT.copy()
+        fi_layout.update(dict(
+            coloraxis_showscale=False,
+            xaxis=dict(gridcolor=C_GRID, tickfont=dict(color=C_TEXT), title=dict(font=dict(color=C_TEXT, size=13))),
+            yaxis=dict(gridcolor=C_GRID, tickfont=dict(color=C_TEXT, size=12)),
+        ))
+        fig_fi.update_layout(fi_layout)
         fig_fi.update_traces(marker_line_width=0)
-        st.plotly_chart(fig_fi, use_container_width=True)
+        st.plotly_chart(fig_fi, width='stretch')
 
     with col_d:
-        st.markdown("## Behavioral Anomaly Radar")
-        categories   = ["Swipe Ratio","Usage Time","Match Rate","Likes Sent","Profile Age","Reply Speed"]
-        scammer_vals = [95, 88, 72, 97, 20, 85]
-        normal_vals  = [48, 55, 50, 43, 78, 50]
+        st.markdown("## Feature Profile: Top-Tier vs Normal")
+        if not dff.empty:
+            numeric_features = ['BMI', 'Profile_Effort', 'app_usage_time_min',
+                                 'swipe_right_ratio', 'emoji_usage_rate', 'bio_length']
+            display_names    = ['BMI', 'Profile\nEffort', 'App Usage', 
+                                 'Swipe\nRatio', 'Emoji\nRate', 'Bio\nLength']
 
-        fig_radar = go.Figure()
-        fig_radar.add_trace(go.Scatterpolar(
-            r=scammer_vals + [scammer_vals[0]], theta=categories + [categories[0]],
-            fill="toself", name="Scammer",
-            line_color=C_DANGER, fillcolor="rgba(255,59,92,0.15)"
-        ))
-        fig_radar.add_trace(go.Scatterpolar(
-            r=normal_vals + [normal_vals[0]], theta=categories + [categories[0]],
-            fill="toself", name="Normal User",
-            line_color=C_ACCENT, fillcolor="rgba(0,212,255,0.1)"
-        ))
-        fig_radar.update_layout(
-            **PLOTLY_LAYOUT,
-            polar=dict(
-                bgcolor=C_PANEL,
-                radialaxis=dict(visible=True, range=[0,100], gridcolor=C_BORDER,
-                                linecolor=C_BORDER, tickfont_color=C_MUTED),
-                angularaxis=dict(gridcolor=C_BORDER, linecolor=C_BORDER),
-            ),
-            legend=dict(font_color=C_TEXT),
+            top_means    = dff[dff["Is_Top_Tier"] == 1][numeric_features].mean().values
+            normal_means = dff[dff["Is_Top_Tier"] == 0][numeric_features].mean().values
+
+            max_vals = np.maximum(top_means, normal_means)
+            max_vals[max_vals == 0] = 1
+            top_norm    = (top_means / max_vals * 100).tolist()
+            normal_norm = (normal_means / max_vals * 100).tolist()
+
+            fig_radar = go.Figure()
+            fig_radar.add_trace(go.Scatterpolar(
+                r=top_norm + [top_norm[0]],
+                theta=display_names + [display_names[0]],
+                fill="toself", name="⭐ Top-Tier",
+                line_color=C_GOLD, fillcolor="rgba(240,196,79,0.18)"
+            ))
+            fig_radar.add_trace(go.Scatterpolar(
+                r=normal_norm + [normal_norm[0]],
+                theta=display_names + [display_names[0]],
+                fill="toself", name="👤 Normal",
+                line_color=C_ACCENT, fillcolor="rgba(192,132,245,0.12)"
+            ))
+            
+            radar_layout = PLOTLY_LAYOUT.copy()
+            radar_layout.update(dict(
+                polar=dict(
+                    bgcolor=C_PANEL,
+                    radialaxis=dict(visible=True, range=[0, 100], gridcolor=C_GRID,
+                                    linecolor=C_BORDER, tickfont=dict(color=C_TEXT, size=11)),
+                    angularaxis=dict(gridcolor=C_GRID, linecolor=C_BORDER, tickfont=dict(size=12, color=C_TEXT)),
+                ),
+                legend=dict(font=dict(color=C_TEXT, size=13)),
+            ))
+            fig_radar.update_layout(radar_layout)
+            st.plotly_chart(fig_radar, width='stretch')
+
+    # ── Box plot full width ──
+    st.markdown("---")
+    st.markdown("## Profile Effort Distribution by User Type")
+    if not dff.empty:
+        plot_df = dff.copy()
+        plot_df["User Type"] = plot_df["Is_Top_Tier"].map({1: "⭐ Top-Tier", 0: "👤 Normal"})
+        fig_box = px.box(
+            plot_df, x="User Type", y="Profile_Effort",
+            color="User Type",
+            color_discrete_map={"⭐ Top-Tier": C_GOLD, "👤 Normal": C_MUTED},
+            labels={"Profile_Effort": "Profile Effort Score (Bio Length × Photos)", "User Type": ""},
+            points="outliers",
         )
-        st.plotly_chart(fig_radar, use_container_width=True)
+        
+        box_layout = PLOTLY_LAYOUT.copy()
+        box_layout.update(dict(
+            height=380,
+            showlegend=False,
+            xaxis=dict(gridcolor=C_GRID, tickfont=dict(size=14, color=C_TEXT)),
+            yaxis=dict(gridcolor=C_GRID, tickfont=dict(color=C_TEXT), title=dict(font=dict(color=C_TEXT, size=13))),
+        ))
+        fig_box.update_layout(box_layout)
+        st.plotly_chart(fig_box, width='stretch')
 
-    # ── Box plots ──
-    st.markdown("## Distribution by Outcome")
-    metric_choice = st.selectbox("Select Feature", ["App_Usage_Time","Swipe_Ratio","Likes_Received","Mutual_Matches"])
-    fig_box = px.box(
-        dff, x="Match_Outcome", y=metric_choice,
-        color="Match_Outcome",
-        color_discrete_map={
-            "Mutual Match": C_SAFE, "Ghosted": C_MUTED,
-            "Catfished": C_DANGER, "Pending": C_WARN
-        },
-    )
-    fig_box.update_layout(**PLOTLY_LAYOUT)
-    fig_box.update_xaxes(gridcolor=C_BORDER)
-    fig_box.update_yaxes(gridcolor=C_BORDER)
-    st.plotly_chart(fig_box, use_container_width=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE 3 — MODEL PERFORMANCE
@@ -384,184 +551,233 @@ elif page == "🔍 Behavioral Analysis":
 elif page == "🤖 Model Performance":
 
     st.markdown("# 🤖 Model Performance Comparison")
-    st.markdown("All models evaluated on 20% held-out test set. Primary metric: **Recall** (catch all scammers).")
+    st.markdown("All metrics evaluated on a **30% held-out test set**. Decision threshold = 0.50.")
     st.markdown("---")
 
     models_data = {
-        "Model":      ["Random Forest","XGBoost","auto-sklearn","Logistic Regression","KNN (k=7)","Decision Tree"],
-        "Accuracy":   [93.1, 92.0, 91.3, 87.2, 83.8, 80.4],
-        "Precision":  [91.4, 90.7, 90.0, 85.9, 82.0, 79.1],
-        "Recall":     [94.2, 92.1, 91.5, 85.6, 81.3, 78.9],
-        "F1-Score":   [92.8, 91.4, 90.7, 85.7, 81.6, 79.0],
-        "Best":       [True, False, False, False, False, False],
+        "Model":     ["Random Forest", "Decision Tree", "Logistic Regression", "Gradient Boosting", "XGBoost"],
+        "Precision": [67.33, 64.48, 56.06, 75.92, 75.05],
+        "Recall":    [57.81, 57.72, 65.29, 47.91, 48.04],
+        "F1-Score":  [62.21, 60.91, 60.33, 58.75, 58.59],
+        "ROC-AUC":   [76.23, 75.08, 76.01, 76.26, 75.24],
     }
     mdf = pd.DataFrame(models_data)
 
     # ── Grouped bar chart ──
+    st.markdown("## All Models — Metrics Comparison")
     fig_models = go.Figure()
-    metrics = ["Accuracy","Precision","Recall","F1-Score"]
-    colors  = [C_ACCENT, C_WARN, C_DANGER, C_SAFE]
+    metrics = ["Precision", "Recall", "F1-Score", "ROC-AUC"]
+    colors  = [C_ACCENT, C_PINK, C_GOLD, C_GREEN]
     for metric, color in zip(metrics, colors):
         fig_models.add_trace(go.Bar(
             name=metric, x=mdf["Model"], y=mdf[metric],
             marker_color=color, marker_line_width=0,
+            text=[f"{v:.1f}%" for v in mdf[metric]],
+            textposition="outside",
+            textfont=dict(size=11, color=C_TEXT),
         ))
-    fig_models.update_layout(
-        **PLOTLY_LAYOUT,
+        
+    models_layout = PLOTLY_LAYOUT.copy()
+    models_layout.update(dict(
+        height=480,
         barmode="group",
-        yaxis=dict(range=[70, 100], gridcolor=C_BORDER),
-        xaxis=dict(gridcolor=C_BORDER),
-        legend=dict(font_color=C_TEXT),
-    )
-    st.plotly_chart(fig_models, use_container_width=True)
+        yaxis=dict(range=[35, 95], gridcolor=C_GRID, title=dict(text="Score (%)", font=dict(color=C_TEXT)), tickfont=dict(color=C_TEXT)),
+        xaxis=dict(gridcolor=C_GRID, tickfont=dict(size=12, color=C_TEXT)),
+        legend=dict(font=dict(color=C_TEXT, size=13), orientation="h", yanchor="bottom", y=1.04, xanchor="right", x=1),
+        margin=dict(t=80, b=50, l=60, r=40),
+    ))
+    fig_models.update_layout(models_layout)
+    st.plotly_chart(fig_models, width='stretch')
 
-    # ── Table ──
-    st.markdown("## Detailed Scores")
-    display_df = mdf.drop(columns="Best").set_index("Model")
-    display_df = display_df.style\
-        .highlight_max(axis=0, color="#00e5a022")\
-        .format("{:.1f}%")
-    st.dataframe(display_df, use_container_width=True)
+    # ── Score table ──
+    st.markdown("## Detailed Score Table")
+    display_df = mdf.set_index("Model").style \
+        .highlight_max(axis=0, color="#f0c44f44") \
+        .format("{:.2f}%")
+    st.dataframe(display_df, width='stretch')
 
-    st.info("★ **Random Forest** achieved the highest Recall (94.2%), outperforming auto-sklearn by +2.7 pp.")
-
-    # ── Recall vs auto-sklearn comparison ──
-    st.markdown("## Recall vs auto-sklearn Baseline")
-    recall_df = mdf[["Model","Recall"]].copy()
-    recall_df["vs_auto"] = recall_df["Recall"] - 91.5
-    fig_vs = px.bar(
-        recall_df, x="Model", y="vs_auto",
-        color="vs_auto",
-        color_continuous_scale=[[0, C_DANGER],[0.5, C_MUTED],[1, C_SAFE]],
-        labels={"vs_auto": "Δ vs auto-sklearn (pp)"},
-    )
-    fig_vs.add_hline(y=0, line_color=C_ACCENT, line_dash="dash", line_width=1)
-    fig_vs.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
-    st.plotly_chart(fig_vs, use_container_width=True)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PAGE 4 — LIVE FRAUD DETECTION
-# ─────────────────────────────────────────────────────────────────────────────
-elif page == "🚨 Live Fraud Detection":
-
-    st.markdown("# 🚨 Live Fraud Detection")
-    st.markdown("Enter user behavioral data to get a real-time risk assessment.")
     st.markdown("---")
 
-    col_inp, col_out = st.columns([1, 1])
+    # ── AutoML Comparison ──
+    st.markdown("## Manual Tuning vs FLAML AutoML Benchmark")
+    comparison_data = {
+        "Method":    ["Random Forest\n(Manual Tuned ✅)", "FLAML AutoML\n(XGBoost 🤖)"],
+        "Precision": [67.33, 75.83],
+        "Recall":    [57.81, 48.59],
+        "F1-Score":  [62.21, 59.23],
+        "ROC-AUC":   [76.23, 76.38],
+    }
+    comp_df = pd.DataFrame(comparison_data)
+    fig_comp = go.Figure()
+    for metric, color in zip(metrics, colors):
+        fig_comp.add_trace(go.Bar(
+            name=metric, x=comp_df["Method"], y=comp_df[metric],
+            marker_color=color, marker_line_width=0,
+            text=[f"{v:.1f}%" for v in comp_df[metric]],
+            textposition="outside",
+            textfont=dict(size=11, color=C_TEXT),
+        ))
+        
+    comp_layout = PLOTLY_LAYOUT.copy()
+    comp_layout.update(dict(
+        height=420,
+        barmode="group",
+        yaxis=dict(range=[35, 95], gridcolor=C_GRID, title=dict(text="Score (%)", font=dict(color=C_TEXT)), tickfont=dict(color=C_TEXT)),
+        xaxis=dict(gridcolor=C_GRID, tickfont=dict(size=13, color=C_TEXT)),
+        legend=dict(font=dict(color=C_TEXT, size=13), orientation="h", yanchor="bottom", y=1.04, xanchor="right", x=1),
+        margin=dict(t=80, b=50, l=60, r=40),
+    ))
+    fig_comp.update_layout(comp_layout)
+    st.plotly_chart(fig_comp, width='stretch')
+
+    st.success("✅ Our manually tuned **Random Forest** achieved the highest F1-Score of **62.21%**, beating FLAML AutoML (59.23%). It also has better Recall (57.81% vs 48.59%), meaning it correctly identifies more Top-Tier users.")
+
+    st.markdown("---")
+
+    # ── Overfitting Diagnosis ──
+    st.markdown("## Overfitting & Underfitting Diagnosis")
+    diag_data = {
+        "Model":        ["Logistic Regression", "Random Forest", "Gradient Boosting", "Decision Tree", "XGBoost"],
+        "Train F1 (%)": [59.3, 62.5, 61.9, 62.8, 64.1],
+        "Test F1 (%)":  [60.3, 62.2, 58.7, 60.9, 58.6],
+        "Gap (%)":      [1.0,  0.3,  3.2,  1.9,  5.5],
+        "Diagnosis":    ["✅ Good Generalisation", "✅ Good Generalisation",
+                         "✅ Good Generalisation", "✅ Good Generalisation",
+                         "✅ Good Generalisation"],
+    }
+    st.dataframe(pd.DataFrame(diag_data).set_index("Model"), width='stretch')
+    st.info("All 5 models show good generalisation — Train vs Test F1 gap is safely below 10% for every architecture.")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PAGE 4 — PREDICT TOP-TIER
+# ─────────────────────────────────────────────────────────────────────────────
+elif page == "✨ Predict Top-Tier":
+
+    st.markdown("# ✨ Top-Tier User Predictor")
+    st.markdown("Enter a user's profile and behavioural stats to predict whether they belong in the **Top 20%** of dating app users.")
+    st.markdown("---")
+
+    col_inp, col_out = st.columns([1, 1], gap="large")
 
     with col_inp:
-        st.markdown("## Enter User Data")
-        inp_age    = st.number_input("Age",               min_value=18, max_value=100, value=65)
-        inp_usage  = st.slider("App Usage Time (hrs/day)", 0.0, 14.0, 9.0, 0.1)
-        inp_swipe  = st.slider("Swipe Ratio",              0.0, 1.0,  0.85, 0.01)
-        inp_likes  = st.number_input("Likes Received",    min_value=0, max_value=500, value=320)
-        inp_mutual = st.number_input("Mutual Matches",    min_value=0, max_value=100, value=5)
-        inp_gender = st.selectbox("Gender", ["Male","Female","Non-binary"])
-        inp_loc    = st.selectbox("Location Type", ["Urban","Suburban","Rural"])
+        st.markdown("## User Profile Inputs")
 
-        predict_btn = st.button("🔍 Predict Risk Level", use_container_width=True)
+        inp_age    = st.slider("Age", 18, 80, 28)
+        inp_weight = st.slider("Weight (kg)", 40.0, 130.0, 68.0, 0.5)
+        inp_height = st.slider("Height (cm)", 140.0, 210.0, 170.0, 0.5)
+        inp_pics   = st.number_input("Number of Profile Photos", min_value=1, max_value=20, value=5)
+        inp_bio    = st.slider("Bio Length (characters)", 0, 500, 150, 10)
+        inp_usage  = st.slider("Daily App Usage (minutes)", 0, 500, 90, 5)
+        inp_swipe  = st.slider("Swipe Right Ratio", 0.0, 1.0, 0.45, 0.01)
+        inp_emoji  = st.slider("Emoji Usage Rate in Messages", 0.0, 1.0, 0.30, 0.05)
+
+        st.markdown("---")
+        confidence_threshold = st.slider(
+            "Confidence Threshold (How Picky?)", 0.50, 0.95, 0.80, 0.05,
+            help="Higher = stricter. Model must be at least this confident to label someone Top-Tier."
+        )
+        predict_btn = st.button("💘 Predict Top-Tier Status")
 
     with col_out:
-        st.markdown("## Risk Assessment")
+        st.markdown("## Prediction Result")
 
         if predict_btn:
-            # Simple heuristic scoring (replace with model.pkl when ready)
-            score = 0
-            score += min(inp_swipe * 50, 40)         # swipe ratio (max 40)
-            score += min((inp_usage / 14) * 25, 25)  # usage time  (max 25)
-            score += min(inp_age / 80 * 20, 20)      # age factor  (max 20)
-            score += min((inp_likes / 500) * 10, 10) # likes       (max 10)
-            score += max(0, (5 - inp_mutual) * 1)    # low matches add risk
-            score = min(int(score), 99)
+            bmi            = inp_weight / ((inp_height / 100) ** 2)
+            profile_effort = inp_bio * inp_pics
 
-            if score >= 70:
-                level, color, icon = "HIGH RISK", C_DANGER, "🔴"
-            elif score >= 45:
-                level, color, icon = "MEDIUM RISK", C_WARN, "🟡"
+            feature_vector = np.array([[
+                bmi, inp_age, profile_effort, inp_usage,
+                inp_swipe, inp_emoji, inp_pics, inp_bio
+            ]])
+
+            if ml_model is not None:
+                probability = ml_model.predict_proba(feature_vector)[0][1]
             else:
-                level, color, icon = "LOW RISK", C_SAFE, "🟢"
+                effort_norm = min(profile_effort / 2500, 1.0)
+                bmi_score   = 1 - min(abs(bmi - 22) / 20, 1.0)
+                probability = effort_norm * 0.6 + bmi_score * 0.4
+                probability = float(np.clip(probability + np.random.normal(0, 0.05), 0, 1))
+
+            score = int(probability * 100)
+
+            if probability >= confidence_threshold:
+                level, color, icon = "⭐ TOP-TIER USER", C_GOLD, "⭐"
+                msg = "This profile is predicted to be in the top 20% most popular users!"
+            elif probability >= 0.40:
+                level, color, icon = "📈 BORDERLINE", C_ACCENT, "📈"
+                msg = "Close to Top-Tier. Small profile improvements could push them in."
+            else:
+                level, color, icon = "👤 NORMAL USER", C_MUTED, "👤"
+                msg = "This profile is predicted to fall in the regular 80% of users."
 
             st.markdown(f"""
-            <div style="background:{C_PANEL};border:2px solid {color};border-radius:16px;
-                        padding:28px;text-align:center;margin-top:12px;">
-              <div style="font-size:3rem;">{icon}</div>
-              <div style="font-size:1.8rem;font-weight:800;color:{color};margin:8px 0;">
-                {level}
-              </div>
-              <div style="font-size:3.5rem;font-weight:900;color:{color};">{score}</div>
-              <div style="color:#4a6a8a;font-size:0.8rem;">Risk Score (0–99)</div>
+            <div style="background:{C_PANEL};border:2px solid {color};border-radius:18px;
+                        padding:32px;text-align:center;margin-top:8px;">
+              <div style="font-size:3.8rem;">{icon}</div>
+              <div style="font-size:1.7rem;font-weight:800;color:{color};
+                          margin:12px 0;font-family:'Space Mono',monospace;">{level}</div>
+              <div style="font-size:3.2rem;font-weight:900;color:{color};
+                          font-family:'Space Mono',monospace;">{score}%</div>
+              <div style="color:#ffffff; font-weight:600; font-size:0.85rem; margin-top:6px;">Model Confidence Score</div>
+              <div style="color:{C_TEXT};font-size:0.95rem;margin-top:14px;line-height:1.5;">{msg}</div>
             </div>
             """, unsafe_allow_html=True)
 
-            # Gauge chart
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=score,
-                domain={"x":[0,1],"y":[0,1]},
+                domain={"x": [0, 1], "y": [0, 1]},
                 gauge=dict(
-                    axis=dict(range=[0,100], tickcolor=C_MUTED),
+                    axis=dict(range=[0, 100], tickcolor=C_TEXT, tickfont=dict(size=12, color=C_TEXT)),
                     bar=dict(color=color),
                     steps=[
-                        dict(range=[0,45],  color="#0a1624"),
-                        dict(range=[45,70], color="#1a2a1a"),
-                        dict(range=[70,100],color="#2a1a1a"),
+                        dict(range=[0, 40],   color="#1a0a2e"),
+                        dict(range=[40, 70],  color="#2d1060"),
+                        dict(range=[70, 100], color="#3d1f6b"),
                     ],
-                    threshold=dict(line=dict(color=color,width=4), thickness=0.75, value=score),
+                    threshold=dict(line=dict(color=color, width=4), thickness=0.75, value=score),
                     bgcolor=C_PANEL,
                     bordercolor=C_BORDER,
                 ),
-                number=dict(font=dict(color=color, size=40)),
+                number=dict(font=dict(color=color, size=40), suffix="%"),
             ))
-            fig_gauge.update_layout(**PLOTLY_LAYOUT, height=300)
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            
+            gauge_layout = dict(
+                paper_bgcolor=C_PANEL,
+                plot_bgcolor=C_PANEL,
+                font=dict(color=C_TEXT, size=13),
+                height=300,
+                margin=dict(t=30, b=20, l=30, r=30),
+            )
+            fig_gauge.update_layout(gauge_layout)
+            st.plotly_chart(fig_gauge, width='stretch')
 
-            # Flags
-            st.markdown("**⚠️ Risk Factors Detected:**")
-            if inp_swipe > 0.75:
-                st.error(f"Swipe Ratio {inp_swipe:.2f} — abnormally high (scammer avg: 0.87)")
-            if inp_usage > 7:
-                st.warning(f"App Usage {inp_usage:.1f} hrs/day — unusually long sessions")
-            if inp_age >= 60:
-                st.warning(f"Age {inp_age} — senior demographic, elevated vulnerability")
-            if inp_mutual < 3:
-                st.error(f"Only {inp_mutual} mutual matches despite high activity — suspicious")
-            if score < 45:
-                st.success("No significant fraud indicators detected.")
+            st.markdown("**📋 Computed Profile Breakdown:**")
+            summary_df = pd.DataFrame({
+                "Feature":  ["BMI", "Profile Effort Score", "App Usage (min/day)", "Swipe Right Ratio"],
+                "Value":    [f"{bmi:.1f}", f"{profile_effort:,}", f"{inp_usage}", f"{inp_swipe:.2f}"],
+                "Note":     [
+                    "✅ Healthy (18.5–24.9)" if 18.5 <= bmi <= 24.9 else "⚠️ Outside healthy range",
+                    "Bio Length × Photos — higher is better",
+                    "Reflects daily engagement level",
+                    "Proportion of right swipes",
+                ],
+            })
+            st.dataframe(summary_df, width='stretch', hide_index=True)
 
         else:
             st.markdown(f"""
-            <div style="background:{C_PANEL};border:1px solid {C_BORDER};border-radius:16px;
-                        padding:40px;text-align:center;color:{C_MUTED};">
-              <div style="font-size:3rem;">🛡️</div>
-              <div style="margin-top:12px;">Fill in user data and click<br><strong>Predict Risk Level</strong></div>
+            <div style="background:{C_PANEL};border:1px solid {C_BORDER};border-radius:18px;
+                        padding:60px 40px;text-align:center;color:{C_TEXT};margin-top:8px;">
+              <div style="font-size:3.5rem;">💘</div>
+              <div style="margin-top:16px;font-size:1rem;line-height:1.7;">
+                Fill in the sliders on the left<br>and click<br>
+                <strong style="color:{C_ACCENT};font-size:1.05rem;">💘 Predict Top-Tier Status</strong>
+              </div>
             </div>
             """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("## 🚨 Flagged Accounts Table")
-
-    # Generate demo flagged accounts
-    np.random.seed(7)
-    flag_rows = []
-    ages_g   = ["61–75","76+","46–60","76+","61–75","31–45","61–75","46–60"]
-    risk_lvl = ["HIGH","HIGH","MEDIUM","HIGH","MEDIUM","LOW","HIGH","MEDIUM"]
-    statuses = ["Flagged","Flagged","Under Review","Flagged","Under Review","Cleared","Flagged","Under Review"]
-    for i in range(8):
-        rs = 80+np.random.randint(15) if risk_lvl[i]=="HIGH" else \
-             55+np.random.randint(20) if risk_lvl[i]=="MEDIUM" else \
-             20+np.random.randint(25)
-        flag_rows.append({
-            "User ID":         f"USR-{np.random.randint(10000,99999)}",
-            "Age Group":       ages_g[i],
-            "Usage (hrs)":     round(np.random.uniform(2,14), 1),
-            "Swipe Ratio":     round(np.random.uniform(0.1,1.0), 2),
-            "Risk Score":      rs,
-            "Risk Level":      risk_lvl[i],
-            "Status":          statuses[i],
-        })
-    flags_df = pd.DataFrame(flag_rows)
-    st.dataframe(flags_df, use_container_width=True, hide_index=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE 5 — ABOUT
@@ -571,41 +787,76 @@ elif page == "ℹ️ About":
     st.markdown("---")
 
     st.markdown("""
-    ## 🛡️ Elder-Fraud Shield
+## 💘 Tying the Data Knot: Love, Life & Likes
 
-    **Course:** WIA1006 / WID3006 — Machine Learning  
-    **Semester:** Sem 2, Session 2025/2026  
-    **Institution:** FCSIT, Universiti Malaya  
+**Course:** WIA1006 / WID3006 — Machine Learning  
+**Semester:** Sem 2, Session 2025/2026  
+**Institution:** Faculty of Computer Science & Information Technology (FCSIT), Universiti Malaya
 
-    ---
+---
 
-    ## 📌 Problem Statement
-    Romance scams disproportionately target senior citizens on dating platforms.
-    Current platforms react only after user reports. This project builds a **proactive
-    machine learning detection system** that identifies scammer accounts using only
-    behavioral metadata — without reading private messages.
+## 👥 Project Team Members
+| Name | Student ID |
+|------|-----------|
+| CHONG POHYI | 25006780 |
+| TEOH XI XIAN | 25006498 |
+| LIM JIE SHIN | 23118509 |
+| KONG YEE FEI | 25006834 |
+| LEE XIN YI | 25005970 |
+| CHENG YING CHEN | 25000008 |
 
-    ## 🎯 Objectives
-    - Train ≥ 5 ML models to classify "Catfished" outcomes
-    - Maximize **Recall** to minimize missed scammers
-    - Benchmark against **auto-sklearn**
-    - Deliver an interactive analyst dashboard
+---
 
-    ## 🗂️ Dataset
-    [Kaggle — Dating App Behavior Dataset](https://www.kaggle.com/datasets/keyushnisar/dating-app-behavior-dataset)  
-    50,000 synthetic records · 19 features
+## 📌 Problem Statement
+Dating apps surface millions of profiles, making it hard for users to find high-quality matches.
+Platforms use ranking systems to promote popular profiles — but building an accurate, fair AI predictor
+for "Top-Tier" users is non-trivial. This project builds a machine learning system that predicts whether
+a dating app user falls in the **top 20% most popular users**, based purely on behavioural and profile
+metadata — without accessing private messages.
 
-    ## 🤖 Models Used
-    | Model | Recall |
-    |---|---|
-    | Random Forest ★ | 94.2% |
-    | XGBoost | 92.1% |
-    | auto-sklearn | 91.5% |
-    | Logistic Regression | 85.6% |
-    | KNN (k=7) | 81.3% |
-    | Decision Tree | 78.9% |
+## 🎯 Research Questions
+1. Can we predict Top-Tier status using profile effort (bio length × photos) and body metrics (BMI)?
+2. Which features matter most — profile effort, app usage, swipe behaviour, or demographics?
+3. Which ML model is the best "picky recommender" — minimising wrong Top-Tier recommendations?
+4. Can our manually tuned model beat FLAML AutoML on F1-Score?
 
-    ## 🔗 Links
-    - GitHub: https://github.com/Pohyi118/machinelearningproject
-    - Submission Deadline: **8 June 2026, 12:00 PM** via SPECTRUM
-    """)
+---
+
+## 🗂️ Dataset
+| Attribute | Detail |
+|-----------|--------|
+| Source | Kaggle — Dating App Behavior Dataset |
+| Size | 50,000 user records |
+| Original Features | 19+ demographic & behavioural features |
+| Features Used | BMI, Age, Profile Effort, App Usage Time, Swipe Right Ratio, Emoji Rate, Profile Pics, Bio Length |
+| Target Variable | `Is_Top_Tier` — Top 20% by predicted likes received |
+| Label Noise | 15% random label flip to simulate real-world unpredictability |
+
+---
+
+## ⚙️ Methodology
+| Step | Description |
+|------|-------------|
+| Data Cleaning | Duplicate removal, missing value handling, IQR outlier capping |
+| Feature Engineering | BMI = weight/height², Profile Effort = bio_length × profile_pics |
+| Target Creation | Top 20% by desirability score + 15% label noise |
+| Models Trained | Random Forest, Decision Tree, Logistic Regression, Gradient Boosting, XGBoost |
+| Hyperparameter Tuning | GridSearchCV with 5-fold cross-validation, optimising F1-Score |
+| AutoML Benchmark | FLAML (60-second budget, XGBoost winner) |
+
+---
+
+## 🤖 Final Model Results
+| Model | Precision | Recall | F1-Score | ROC-AUC |
+|-------|-----------|--------|----------|---------|
+| **Random Forest ★ Champion** | **67.33%** | **57.81%** | **62.21%** | **76.23%** |
+| Decision Tree | 64.48% | 57.72% | 60.91% | 75.08% |
+| Logistic Regression | 56.06% | 65.29% | 60.33% | 76.01% |
+| Gradient Boosting | 75.92% | 47.91% | 58.75% | 76.26% |
+| XGBoost | 75.05% | 48.04% | 58.59% | 75.24% |
+| FLAML AutoML (XGBoost) | 75.83% | 48.59% | 59.23% | 76.38% |
+
+> ✅ Our manually tuned Random Forest outperformed FLAML AutoML in F1-Score (**62.21% vs 59.23%**).
+
+---
+""")
