@@ -203,16 +203,26 @@ else:
 # ─────────────────────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    try:
-        df = pd.read_csv("../processed_desirability_data.csv")
-        return df
-    except FileNotFoundError:
-        try:
-            df = pd.read_csv("processed_desirability_data.csv")
-            return df
-        except FileNotFoundError:
-            st.error("❌ Could not find 'processed_desirability_data.csv'. Please run clean_data.py first!")
-            return pd.DataFrame()
+    # This finds the absolute directory path where this specific app.py file lives
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Target file names
+    target_file = "processed_desirability_data.csv"
+    
+    # Strategy 1: Look exactly in the same folder as app.py
+    path_same_folder = os.path.join(current_dir, target_file)
+    
+    # Strategy 2: Look in the parent folder (if app.py is inside a subfolder)
+    path_parent_folder = os.path.join(os.path.dirname(current_dir), target_file)
+
+    if os.path.exists(path_same_folder):
+        return pd.read_csv(path_same_folder)
+    elif os.path.exists(path_parent_folder):
+        return pd.read_csv(path_parent_folder)
+    else:
+        st.error(f"❌ Critical Error: Could not find '{target_file}' anywhere.")
+        st.info(f"Searched paths:\n1. {path_same_folder}\n2. {path_parent_folder}")
+        return pd.DataFrame()
 
 df = load_data()
 
